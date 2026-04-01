@@ -1,0 +1,34 @@
+.App{
+    min-height: 100vh;
+    display: flex;
+    background-image: url("/aug_8_01.jpg");
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-size: cover;   
+}
+/* GLOBAL SCROLLBAR */
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0b1f3a;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg,
+            #00eaff,
+            #00aaff);
+    border-radius: 10px;
+    box-shadow: 0 0 10px #00eaff;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg,
+            #00ffff,
+            #00c3ff);
+    box-shadow: 0 0 15px #00ffff;
+}

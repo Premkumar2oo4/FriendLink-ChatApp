@@ -71,7 +71,7 @@ const MyChats = ({ fetchAgain }) => {
         justifyContent="space-between"
         alignItems="center"
       >
-        My Chats
+        FriendLink
         <GroupChatModal>
         <Button
           size="sm"

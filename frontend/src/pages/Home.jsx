@@ -86,7 +86,7 @@ function Home() {
               }}
             >
               <LuUserPlus size={16} />
-              Register
+              Register Here
             </Tab>
           </TabList>
           <TabPanels mt="6">

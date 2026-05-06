@@ -6,15 +6,28 @@ import { getSender, getSenderFull } from '../config/ChatLogics'
 import ProfileModal from './miscellaneous/ProfileModal'
 import UpdateGroupChatModal from './miscellaneous/UpdateGroupChatModal'
 import axios from 'axios'
+import animationData from "../animations/typing.json";
 import './style.css'
 import ScrollableChat from './ScrollableChat'
+import {io} from "socket.io-client";
+import  Lottie, {} from 'react-lottie'
+const defaultOptions = {
+    loop: true,
+    autoplay: true,
+    animationData: animationData,
+    rendererSettings: {
+        preserveAspectRatio: "xMidYMid slice",
+    },
+};
+const ENDPOINT="http://localhost:5000"
+var socket,selectedChatCompare; 
 const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(false);
     const [newMessage, setNewMessage] = useState("");
-    // const [socketConnected, setSocketConnected] = useState(false);
     const [typing, setTyping] = useState(false);
     const [istyping, setIsTyping] = useState(false);
+    const [socketConnected,setSocketConnected] = useState(false);
     const toast = useToast();
     const { user, selectedChat, setSelectedChat } = ChatState()
     const fetchMessages = async () => {
@@ -38,7 +51,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
             setMessages(data);
             setLoading(false);
 
-            // socket.emit("join chat", selectedChat._id);
+            socket.emit("join chat", selectedChat._id);
         } catch (error) {
             toast({
                 title: "Error Occured!",
@@ -52,7 +65,14 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     };
     useEffect(()=>{
         fetchMessages()
+        selectChatCompare = selectedChat;
     },[selectedChat])
+    useEffect(()=>{
+        socket.on("message received",(newMessageRecieved)=>{
+            if(!selectChatCompare || selectChatCompare._id !== newMessageRecieved.chat._id) return;
+            else setMessages([...messages,newMessageRecieved]);
+        })
+    },[])
     const sendMessage = async (event) => {
         if (event.key === 'Enter' && newMessage) {
             try {
@@ -70,7 +90,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                 );
                 console.log(data);
 
-                setNewMessage("");
+               socket.emit('new message',data);
                 setMessages([...messages, data])
             } catch (error) {
                 toast({
@@ -84,8 +104,32 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
             }
         }
     };
+    useEffect(()=>{
+        socket=io(ENDPOINT);
+        socket.emit("setup",user);
+        socket.on("connected",()=>{
+            setSocketConnected(true);
+        })
+        socket.on("typing",()=>setIsTyping(true))
+        socket.on("stop typing",()=>setIsTyping(false)) 
+    },[])
     const typingHandler = (e) => {
         setNewMessage(e.target.value)
+        if (!socketConnected) return;
+        if(!typing){
+            setTyping(true);
+            socket.emit("typing",selectedChat._id);
+        }
+        let lastTypeTime = new Date().getTime();
+        var timerLength = 3000;
+        setTimeout(()=>{
+            var timeNow = new Date().getTime();
+            var timeDiff = timeNow - lastTypeTime;
+            if(timeDiff >= timerLength && typing){
+                socket.emit("stop typing",selectedChat._id);
+                setTyping(false);
+            }
+        },timerLength);
     };
 
 
@@ -170,18 +214,14 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                             isRequired
                             mt={3}
                         >
-                            {/* {istyping ? (
-                              <div>
-                                  <Lottie
-                                      options={defaultOptions}
-                                      // height={50}
-                                      width={70}
-                                      style={{ marginBottom: 15, marginLeft: 0 }}
-                                  />
-                              </div>
-                          ) : (
-                              <></>
-                          )} */}
+                           {istyping?(
+                            <Lottie
+                            options={defaultOptions}
+                            height={50}
+                            width={70}
+                            style={{marginBottom:15,marginLeft:0}}
+                            />
+                           ):(<></>)}
                             <Input
                                 variant="filled"
                                 bg="transparent"

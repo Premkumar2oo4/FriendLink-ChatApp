@@ -1,18 +1,17 @@
 import { AddIcon } from "@chakra-ui/icons";
-import { Box, Stack, Text } from "@chakra-ui/react";
+import { Box, Stack, Text, Button, Avatar, Badge } from "@chakra-ui/react";
 import { useToast } from "@chakra-ui/react";
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { getSender } from "../config/ChatLogics";
+import { getSender, getSenderFull } from "../config/ChatLogics";
 import ChatLoading from "./ChatLoading";
 import GroupChatModal from "./miscellaneous/GroupChatModal";
-import { Button } from "@chakra-ui/react";
 import { ChatState } from "../Context/ChatProvider";
 
 const MyChats = ({ fetchAgain }) => {
   const [loggedUser, setLoggedUser] = useState();
 
-  const { selectedChat, setSelectedChat, user, chats, setChats } = ChatState();
+  const { selectedChat, setSelectedChat, user, chats, setChats, notification, setNotification } = ChatState();
 
   const toast = useToast();
 
@@ -27,7 +26,7 @@ const MyChats = ({ fetchAgain }) => {
 
       const { data } = await axios.get("/api/chat", config);
       setChats(data);
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Error Occured!",
         description: "Failed to Load the chats",
@@ -99,15 +98,18 @@ const MyChats = ({ fetchAgain }) => {
           <Stack spacing={2} overflowY="scroll">
             {chats.map((chat) => (
               <Box
-                onClick={() => setSelectedChat(chat)}
+                onClick={() => {
+                  setSelectedChat(chat);
+                  setNotification(notification.filter((n) => n.chat._id !== chat._id));
+                }}
                 cursor="pointer"
                 bg={
-                  selectedChat === chat
+                  selectedChat?._id === chat?._id
                     ? "rgba(0,229,255)"
                     : "rgba(255,255,255,0.06)"
                 }
                 color={
-                  selectedChat === chat
+                  selectedChat?._id === chat?._id
                     ? "rgba(0,0,0)"
                     : "rgba(255,255,255)"
                 }
@@ -118,20 +120,53 @@ const MyChats = ({ fetchAgain }) => {
                 borderRadius="10px"
                 transition="0.2s"
                 key={chat._id}
+                display="flex"
+                alignItems="center"
+                justifyContent="space-between"
               >
-                <Text fontWeight="500">
-                  {!chat.isGroupChat
-                    ? getSender(loggedUser, chat.users)
-                    : chat.chatName}
-                </Text>
+                <Box display="flex" alignItems="center" flex={1}>
+                  <Avatar
+                    mr={3}
+                    size="sm"
+                    cursor="pointer"
+                    name={
+                      !chat.isGroupChat
+                        ? getSender(loggedUser, chat.users)
+                        : chat.chatName
+                    }
+                    src={
+                      !chat.isGroupChat
+                        ? getSenderFull(loggedUser, chat.users)?.pic
+                        : ""
+                    }
+                  />
+                  <Box flex={1}>
+                    <Text fontWeight="500">
+                      {!chat.isGroupChat
+                        ? getSender(loggedUser, chat.users)
+                        : chat.chatName}
+                    </Text>
 
-                {chat.latestMessage && (
-                  <Text fontSize="xs" opacity="0.8">
-                    <b>{chat.latestMessage.sender.name} :</b>{" "}
-                    {chat.latestMessage.content.length > 50
-                      ? chat.latestMessage.content.substring(0, 51) + "..."
-                      : chat.latestMessage.content}
-                  </Text>
+                    {chat.latestMessage && (
+                      <Text fontSize="xs" opacity="0.8">
+                        <b>{chat.latestMessage.sender.name} :</b>{" "}
+                        {chat.latestMessage.content.length > 50
+                          ? chat.latestMessage.content.substring(0, 51) + "..."
+                          : chat.latestMessage.content}
+                      </Text>
+                    )}
+                  </Box>
+                </Box>
+                {notification.filter((n) => n.chat._id === chat._id).length > 0 && (
+                  <Badge
+                    colorScheme="red"
+                    borderRadius="full"
+                    px={2}
+                    py={0.5}
+                    ml={2}
+                  >
+                    {notification.filter((n) => n.chat._id === chat._id).length}
+                  </Badge>
                 )}
               </Box>
             ))}

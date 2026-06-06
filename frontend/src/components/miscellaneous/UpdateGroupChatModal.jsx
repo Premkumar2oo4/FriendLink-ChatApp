@@ -50,7 +50,7 @@ const UpdateGroupChatModal = ({ fetchMessages, fetchAgain, setFetchAgain }) => {
             console.log(data);
             setLoading(false);
             setSearchResult(data);
-        } catch (error) {
+        } catch (_error) {
             toast({
                 title: "Error Occured!",
                 description: "Failed to Load the Search Results",
@@ -132,7 +132,7 @@ const UpdateGroupChatModal = ({ fetchMessages, fetchAgain, setFetchAgain }) => {
                 },
             };
             const { data } = await axios.put(
-                `/api/chat/groupadd`,
+                `/api/chat/addgroup`,
                 {
                     chatId: selectedChat._id,
                     userId: user1._id,
@@ -205,23 +205,39 @@ const UpdateGroupChatModal = ({ fetchMessages, fetchAgain, setFetchAgain }) => {
 
     return (
         <>
-            <IconButton d={{ base: "flex" }} icon={<ViewIcon />} onClick={onOpen} />
+            <IconButton
+                display={{ base: "flex" }}
+                icon={<ViewIcon />}
+                onClick={onOpen}
+                bg="transparent"
+                color="cyan.300"
+                border="1px solid"
+                borderColor="cyan.500"
+                _hover={{ bg: "cyan.500", color: "black" }}
+            />
 
-            <Modal onClose={onClose} isOpen={isOpen} isCentered>
-                <ModalOverlay />
-                <ModalContent>
+            <Modal onClose={onClose} isOpen={isOpen} isCentered size="lg">
+                <ModalOverlay bg="blackAlpha.700" backdropFilter="blur(5px)" />
+                <ModalContent
+                    bg="rgba(15, 32, 60, 0.95)"
+                    color="white"
+                    borderRadius="20px"
+                    border="1px solid rgba(255,255,255,0.15)"
+                    boxShadow="0 10px 40px rgba(0,0,0,0.6)"
+                >
                     <ModalHeader
-                        fontSize="35px"
-                        fontFamily="Work sans"
-                        d="flex"
-                        justifyContent="center"
+                        fontSize="28px"
+                        fontWeight="600"
+                        textAlign="center"
+                        borderBottom="1px solid rgba(255,255,255,0.1)"
+                        color="cyan.300"
                     >
                         {selectedChat.chatName}
                     </ModalHeader>
 
-                    <ModalCloseButton />
-                    <ModalBody d="flex" flexDir="column" alignItems="center">
-                        <Box w="100%" d="flex" flexWrap="wrap" pb={3}>
+                    <ModalCloseButton color="white" />
+                    <ModalBody display="flex" flexDir="column" alignItems="center" pt={6} pb={4}>
+                        <Box w="100%" display="flex" flexWrap="wrap" pb={3} gap={2}>
                             {selectedChat.users.map((u) => (
                                 <UserBadgeItem
                                     key={u._id}
@@ -231,16 +247,21 @@ const UpdateGroupChatModal = ({ fetchMessages, fetchAgain, setFetchAgain }) => {
                                 />
                             ))}
                         </Box>
-                        <FormControl d="flex">
+                        <FormControl display="flex" mb={3}>
                             <Input
                                 placeholder="Chat Name"
-                                mb={3}
                                 value={groupChatName}
+                                bg="rgba(255,255,255,0.08)"
+                                border="1px solid rgba(255,255,255,0.2)"
+                                _hover={{ borderColor: "#00e5ff" }}
+                                _focus={{ borderColor: "#00e5ff", boxShadow: "0 0 5px #00e5ff" }}
                                 onChange={(e) => setGroupChatName(e.target.value)}
                             />
                             <Button
                                 variant="solid"
-                                colorScheme="teal"
+                                bg="#00e5ff"
+                                color="black"
+                                _hover={{ bg: "#00c8e0" }}
                                 ml={1}
                                 isLoading={renameloading}
                                 onClick={handleRename}
@@ -248,28 +269,33 @@ const UpdateGroupChatModal = ({ fetchMessages, fetchAgain, setFetchAgain }) => {
                                 Update
                             </Button>
                         </FormControl>
-                        <FormControl>
+                        <FormControl mb={3}>
                             <Input
                                 placeholder="Add User to group"
-                                mb={1}
+                                bg="rgba(255,255,255,0.08)"
+                                border="1px solid rgba(255,255,255,0.2)"
+                                _hover={{ borderColor: "#00e5ff" }}
+                                _focus={{ borderColor: "#00e5ff", boxShadow: "0 0 5px #00e5ff" }}
                                 onChange={(e) => handleSearch(e.target.value)}
                             />
                         </FormControl>
 
                         {loading ? (
-                            <Spinner size="lg" />
+                            <Spinner size="lg" color="cyan.400" />
                         ) : (
-                            searchResult?.map((user) => (
-                                <UserListItem
-                                    key={user._id}
-                                    user={user}
-                                    handleFunction={() => handleAddUser(user)}
-                                />
-                            ))
+                            <Box w="100%" maxH="200px" overflowY="auto">
+                                {searchResult?.map((user) => (
+                                    <UserListItem
+                                        key={user._id}
+                                        user={user}
+                                        handleFunction={() => handleAddUser(user)}
+                                    />
+                                ))}
+                            </Box>
                         )}
                     </ModalBody>
-                    <ModalFooter>
-                        <Button onClick={() => handleRemove(user)} colorScheme="red">
+                    <ModalFooter borderTop="1px solid rgba(255,255,255,0.1)">
+                        <Button onClick={() => handleRemove(user)} colorScheme="red" w="100%">
                             Leave Group
                         </Button>
                     </ModalFooter>

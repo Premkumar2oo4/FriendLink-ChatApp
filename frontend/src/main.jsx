@@ -4,7 +4,7 @@ import { ChakraProvider } from '@chakra-ui/react'
 import { BrowserRouter } from 'react-router-dom'
 import ChatProvider from './Context/ChatProvider.jsx'
 createRoot(document.getElementById('root')).render(
-  <BrowserRouter>
+  <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
     <ChatProvider>
       <ChakraProvider>
         <App />

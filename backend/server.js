@@ -1,3 +1,4 @@
+require('dotenv').config()
 const express=require('express')
 const { chats } = require('./data/data')
 const connectDB=require('./config/db')
@@ -8,7 +9,7 @@ const messageRouter=require('./router/messageRouter')
 const PORT = process.env.PORT || 5000
 const app=express()
 app.use(express.json())
-require('dotenv').config()
+
 connectDB()
 app.get('/',(req,res)=>{
     res.send("HEllo world")
@@ -26,7 +27,7 @@ const server=app.listen(PORT,()=>{
 const io=require('socket.io')(server,{
     pingTimeout:60000,
     cors:{
-        origin:"http://localhost:3000"
+        origin:["http://localhost:3000", "http://localhost:5173"]
     },
 });
 
@@ -53,10 +54,31 @@ io.on("connection",(socket)=>{
     });
     })
 
-    socket.on("typing",(room)=>socket.in(room).emit("typing",room).emit("typing"))
-    socket.on("stop typing",(room)=>socket.in(room).emit("stop typing",room).emit("stop typing"))
-    socket.off("setup",(userData)=>{
-        console.log("User left room",userData._id);
-        socket.leave(userData._id);
-    })
+    socket.on("message read", ({ chatId, userId }) => {
+        socket.in(chatId).emit("message read", { chatId, userId });
+    });
+
+    socket.on("message delivered", ({ messageId, chatId, userId }) => {
+        socket.in(chatId).emit("message delivered", { messageId, chatId, userId });
+    });
+
+    socket.on("message edited", (updatedMessage) => {
+        socket.in(updatedMessage.chat._id).emit("message edited", updatedMessage);
+    });
+
+    socket.on("message deleted", ({ messageId, chatId }) => {
+        socket.in(chatId).emit("message deleted", { messageId, chatId });
+    });
+
+    socket.on("typing", (room) => socket.in(room).emit("typing", room));
+    socket.on("stop typing", (room) => socket.in(room).emit("stop typing", room));
+
+    socket.on("leave chat", (room) => {
+        socket.leave(room);
+        console.log("User left room", room);
+    });
+
+    socket.on("disconnect", () => {
+        console.log("user disconnected");
+    });
 })

@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom'
 function Home() {
   const navigate=useNavigate()
   useEffect(() => {
-    const user=JSON.parse(localStorage.getItem("user"))
+    const user=JSON.parse(localStorage.getItem("userInfo"))
     if(user){
       navigate("/chats")
     }

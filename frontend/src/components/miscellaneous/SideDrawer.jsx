@@ -12,18 +12,21 @@ import ChatLoading from '../ChatLoading'
 import axios from "axios";
 import { Spinner } from "@chakra-ui/react";
 import UserListItem from "../userAvatar/UserListItem";
+import { getSender } from "../../config/ChatLogics";
+
 function SideDrawer() {
   const navigate = useNavigate()
   const [search, setSearch] = useState("");
   const [searchResult, setSearchResult] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingChat, setLoadingChat] = useState(false);
-  const { setSelectedChat,user,notification,setNotification,chats,setChats} = ChatState();
+  const { setSelectedChat,user,setUser,notification,setNotification,chats,setChats} = ChatState();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast=useToast()
 
   const logouthandler=()=>{
     localStorage.removeItem("userInfo")
+    setUser(null);
     navigate('/')
   }
   const handleSearch = async () => {
@@ -51,7 +54,7 @@ function SideDrawer() {
       
       setLoading(false);
       setSearchResult(data);
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Error Occured!",
         description: "Failed to Load the Search Results",
@@ -79,10 +82,10 @@ function SideDrawer() {
       setSelectedChat(data);
       setLoadingChat(false);
       onClose();
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Error fetching the chat",
-        description: error.message,
+        description: "Failed to access the chat",
         status: "error",
         duration: 5000,
         isClosable: true,
@@ -123,13 +126,39 @@ function SideDrawer() {
         {/* Notifications */}
         <Menu>
           <MenuButton p={1}>
-            <Badge />
-            <BellIcon fontSize="2xl" m={1} />
+            <Box position="relative" display="inline-block">
+                <BellIcon fontSize="2xl" m={1} />
+                {notification.length > 0 && (
+                    <Badge
+                        colorScheme="red"
+                        borderRadius="full"
+                        position="absolute"
+                        top="-1px"
+                        right="-1px"
+                        fontSize="0.7em"
+                    >
+                        {notification.length}
+                    </Badge>
+                )}
+            </Box>
           </MenuButton>
 
-          <MenuList>
-            <MenuItem>No New Messages</MenuItem>
-          </MenuList>
+            <MenuList pl={2}>
+              {!notification.length && "No New Messages"}
+              {notification.map((notif) => (
+                <MenuItem
+                  key={notif._id}
+                  onClick={() => {
+                    setSelectedChat(notif.chat);
+                    setNotification(notification.filter((n) => n !== notif));
+                  }}
+                >
+                  {notif.chat.isGroupChat
+                    ? `New Message in ${notif.chat.chatName}`
+                    : `New Message from ${getSender(user, notif.chat.users)}`}
+                </MenuItem>
+              ))}
+            </MenuList>
         </Menu>
 
         {/* Profile */}

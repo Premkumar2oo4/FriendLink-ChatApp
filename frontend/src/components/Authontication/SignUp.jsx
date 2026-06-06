@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { useToast } from "@chakra-ui/react";
 import  axios from 'axios'
 import {useNavigate} from 'react-router-dom';
+import { ChatState } from "../../Context/ChatProvider";
 
 function SignUp() {
+    const { setUser } = ChatState();
     const [show, setShow] = useState(false);
 
     const [name, setName] = useState();
@@ -122,6 +124,7 @@ function SignUp() {
                 isClosable: true,
             });
             localStorage.setItem("userInfo",JSON.stringify(data));
+            setUser(data);
             setLoading(false);
             navigate('/chats')
             

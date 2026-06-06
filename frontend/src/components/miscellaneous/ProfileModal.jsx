@@ -22,20 +22,36 @@ const ProfileModal = ({ user, children }) => {
             {children ? (
                 <span onClick={onOpen}>{children}</span>
             ) : (
-                <IconButton d={{ base: "flex" }} icon={<ViewIcon />} onClick={onOpen} />
+                <IconButton
+                    display={{ base: "flex" }}
+                    icon={<ViewIcon />}
+                    onClick={onOpen}
+                    bg="transparent"
+                    color="cyan.300"
+                    border="1px solid"
+                    borderColor="cyan.500"
+                    _hover={{ bg: "cyan.500", color: "black" }}
+                />
             )}
             <Modal size="lg" onClose={onClose} isOpen={isOpen} isCentered>
-                <ModalOverlay />
-                <ModalContent h="410px" bg="gray.800" borderRadius="lg" boxShadow="2xl">
+                <ModalOverlay bg="blackAlpha.700" backdropFilter="blur(5px)" />
+                <ModalContent
+                    h="410px"
+                    bg="rgba(15, 32, 60, 0.95)"
+                    color="white"
+                    borderRadius="20px"
+                    border="1px solid rgba(255,255,255,0.15)"
+                    boxShadow="0 10px 40px rgba(0,0,0,0.6)"
+                >
 
                     <ModalHeader
                         fontSize="36px"
                         fontFamily="Work Sans"
                         display="flex"
                         justifyContent="center"
-                        bg="gray.900"
+                        borderBottom="1px solid rgba(255,255,255,0.1)"
                         color="cyan.300"
-                        borderTopRadius="lg"
+                        borderTopRadius="20px"
                     >
                         {user.name}
                     </ModalHeader>
@@ -55,7 +71,7 @@ const ProfileModal = ({ user, children }) => {
                             boxSize="150px"
                             src={user.pic}
                             alt={user.name}
-                            border="8px "
+                            border="8px solid"
                             borderColor="cyan.400"
                         />
 
@@ -68,8 +84,8 @@ const ProfileModal = ({ user, children }) => {
                         </Text>
                     </ModalBody>
 
-                    <ModalFooter justifyContent="center">
-                        <Button colorScheme="cyan" onClick={onClose}>
+                    <ModalFooter justifyContent="center" borderTop="1px solid rgba(255,255,255,0.1)">
+                        <Button bg="#00e5ff" color="black" _hover={{ bg: "#00c8e0" }} onClick={onClose} w="120px">
                             Close
                         </Button>
                     </ModalFooter>

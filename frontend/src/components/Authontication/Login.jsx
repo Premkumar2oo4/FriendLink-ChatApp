@@ -11,8 +11,10 @@ import {
 import React, { useState } from "react";
 import axios from "axios";
 import {useNavigate } from "react-router-dom";
+import { ChatState } from "../../Context/ChatProvider";
 
 function Login() {
+  const { setUser } = ChatState();
   const [show, setShow] = useState(false);
   const handleClick = () => setShow(!show);
 
@@ -56,6 +58,7 @@ function Login() {
       });
 
       localStorage.setItem("userInfo", JSON.stringify(data));
+      setUser(data);
       setLoading(false);
       navigate("/chats");
 

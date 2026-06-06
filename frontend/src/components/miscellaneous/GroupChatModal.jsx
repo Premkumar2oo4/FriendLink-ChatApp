@@ -48,7 +48,7 @@ const GroupChatModal = ({ children }) => {
           
             setLoading(false);
             setSearchResult(data);
-        } catch (error) {
+        } catch (_error) {
             toast({
                 title: "Error Occured!",
                 description: "Failed to Load the Search Results",

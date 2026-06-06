@@ -100,7 +100,7 @@ const MyChats = ({ fetchAgain }) => {
               <Box
                 onClick={() => {
                   setSelectedChat(chat);
-                  setNotification(notification.filter((n) => n.chat._id !== chat._id));
+                  setNotification((prev) => prev.filter((n) => n.chat._id !== chat._id));
                 }}
                 cursor="pointer"
                 bg={

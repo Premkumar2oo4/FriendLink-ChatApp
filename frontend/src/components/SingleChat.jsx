@@ -3,15 +3,19 @@ import {
     FormControl,
     IconButton,
     Input,
+    InputGroup,
+    InputRightElement,
     Spinner,
     Text,
     useToast,
+    Image,
+    CloseButton,
 } from "@chakra-ui/react";
 import "./style.css";
 import { getSender, getSenderFull } from "../config/ChatLogics";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { ArrowBackIcon } from "@chakra-ui/icons";
+import { ArrowBackIcon, AttachmentIcon, ArrowForwardIcon } from "@chakra-ui/icons";
 import ProfileModal from "./miscellaneous/ProfileModal";
 import ScrollableChat from "./ScrollableChat";
 import Lottie from "react-lottie";
@@ -30,6 +34,10 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     const [socketConnected, setSocketConnected] = useState(false);
     const [typing, setTyping] = useState(false);
     const [istyping, setIsTyping] = useState(false);
+    const [fileUrl, setFileUrl] = useState("");
+    const [fileType, setFileType] = useState("");
+    const [filePreview, setFilePreview] = useState("");
+    const fileInputRef = useRef(null);
     const toast = useToast();
 
     const defaultOptions = {
@@ -42,6 +50,68 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     };
     const { selectedChat, setSelectedChat, user, notification, setNotification } =
         ChatState();
+
+    const postDetails = (file) => {
+        setLoading(true);
+        if (!file) {
+            toast({
+                title: "File not found",
+                status: "error",
+                duration: 3000,
+                isClosable: true,
+            });
+            setLoading(false);
+            return;
+        }
+
+        // Generate preview for images
+        if (file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFilePreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        } else {
+            setFilePreview(""); 
+        }
+
+        const data = new FormData();
+        data.append("file", file);
+        data.append("upload_preset", "FriendLink");
+        data.append("cloud_name", "dsg8zyvhe");
+
+        fetch("https://api.cloudinary.com/v1_1/dsg8zyvhe/auto/upload", {
+            method: "POST",
+            body: data,
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.error) {
+                    toast({
+                        title: data.error.message,
+                        status: "error",
+                        duration: 4000,
+                        isClosable: true,
+                    });
+                    setLoading(false);
+                    return;
+                }
+
+                setFileUrl(data.secure_url);
+                setFileType(file.type);
+                setLoading(false);
+            })
+            .catch((err) => {
+                console.error(err);
+                toast({
+                    title: "File upload failed",
+                    status: "error",
+                    duration: 3000,
+                    isClosable: true,
+                });
+                setLoading(false);
+            });
+    };
 
     const fetchMessages = async () => {
         if (!selectedChat) return;
@@ -79,7 +149,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     };
 
     const sendMessage = async (event) => {
-        if (event.key === "Enter" && newMessage) {
+        if ((event.type === "click" || event.key === "Enter") && (newMessage || fileUrl)) {
             socket.emit("stop typing", selectedChat._id);
             try {
                 const config = {
@@ -88,13 +158,25 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                         Authorization: `Bearer ${user.token}`,
                     },
                 };
+
+                const messageData = {
+                    content: newMessage,
+                    chatId: selectedChat._id,
+                };
+
+                if (fileUrl) {
+                    messageData.fileUrl = fileUrl;
+                    messageData.fileType = fileType;
+                }
+
                 setNewMessage("");
+                setFileUrl("");
+                setFileType("");
+                setFilePreview("");
+
                 const { data } = await axios.post(
                     "/api/message",
-                    {
-                        content: newMessage,
-                        chatId: selectedChat._id,
-                    },
+                    messageData,
                     config
                 );
                 if (socket) socket.emit("new message", data);
@@ -129,7 +211,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
         fetchMessages();
 
         if (selectedChat) {
-            setNotification(notification.filter((n) => n.chat._id !== selectedChat._id));
+            setNotification((prev) => prev.filter((n) => n.chat._id !== selectedChat._id));
         }
 
         if (socket && selectedChatCompare) {
@@ -145,9 +227,13 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                 !selectedChatCompare || // if chat is not selected or doesn't match current chat
                 selectedChatCompare._id !== newMessageRecieved.chat._id
             ) {
-                if (!notification.includes(newMessageRecieved)) {
-                    setNotification([newMessageRecieved, ...notification]);
-                    setFetchAgain(!fetchAgain);
+                setNotification((prev) => {
+                    if (!prev.find((n) => n._id === newMessageRecieved._id)) {
+                        return [newMessageRecieved, ...prev];
+                    }
+                    return prev;
+                });
+                setFetchAgain(!fetchAgain);
 
                     // Mark as delivered since we received it in the background/another chat
                     axios.put("/api/message/deliver", { chatId: newMessageRecieved.chat._id }, {
@@ -155,7 +241,6 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                     }).then(() => {
                         socket.emit("message delivered", { messageId: newMessageRecieved._id, chatId: newMessageRecieved.chat._id, userId: user._id });
                     }).catch(err => console.log(err));
-                }
             } else {
                 setMessages((prevMessages) => [...prevMessages, newMessageRecieved]);
                 // Automatically mark as read if user is viewing this chat
@@ -350,31 +435,91 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                             ) : (
                                 <></>
                             )}
-                            <Input
-                                variant="filled"
-                                bg="rgba(255, 255, 255, 0.08)"
-                                border="1px solid"
-                                borderColor="rgba(0, 229, 255, 0.2)"
-                                color="white"
-                                placeholder="Enter a message.."
-                                _placeholder={{ color: "gray.400" }}
-                                _hover={{
-                                    bg: "rgba(255, 255, 255, 0.12)",
-                                    borderColor: "rgba(0, 229, 255, 0.4)",
-                                }}
-                                _focus={{
-                                    bg: "rgba(255, 255, 255, 0.15)",
-                                    borderColor: "rgba(0, 229, 255, 0.8)",
-                                    boxShadow: "0 0 5px rgba(0, 229, 255, 0.5)",
-                                }}
-                                value={newMessage}
-                                onChange={typingHandler}
-                            />
+                            
+                            {/* File Preview Area */}
+                            {(filePreview || (fileUrl && !filePreview)) && (
+                                <Box position="relative" mb={2} display="inline-block" maxW="200px">
+                                    {fileType.startsWith("image/") || filePreview.startsWith("data:image") ? (
+                                        <Image 
+                                            src={filePreview || fileUrl} 
+                                            alt="preview" 
+                                            borderRadius="md" 
+                                            maxH="150px" 
+                                            opacity={loading ? 0.6 : 1}
+                                        />
+                                    ) : (
+                                        <Box p={3} bg="whiteAlpha.200" borderRadius="md" color="white">
+                                            Document Ready
+                                        </Box>
+                                    )}
+                                    {loading && <Spinner position="absolute" top="45%" left="45%" size="sm" color="cyan.400" />}
+                                    <CloseButton 
+                                        position="absolute" 
+                                        top="-10px" 
+                                        right="-10px" 
+                                        bg="red.500" 
+                                        size="sm" 
+                                        borderRadius="full"
+                                        onClick={() => {
+                                            setFileUrl("");
+                                            setFilePreview("");
+                                            setFileType("");
+                                        }}
+                                    />
+                                </Box>
+                            )}
+
+                            <InputGroup>
+                                <Input
+                                    variant="filled"
+                                    bg="rgba(255, 255, 255, 0.08)"
+                                    border="1px solid"
+                                    borderColor="rgba(0, 229, 255, 0.2)"
+                                    color="white"
+                                    placeholder={fileUrl ? "Add a caption..." : "Type a message..."}
+                                    _placeholder={{ color: "gray.400" }}
+                                    _hover={{
+                                        bg: "rgba(255, 255, 255, 0.12)",
+                                        borderColor: "rgba(0, 229, 255, 0.4)",
+                                    }}
+                                    _focus={{
+                                        bg: "rgba(255, 255, 255, 0.15)",
+                                        borderColor: "rgba(0, 229, 255, 0.8)",
+                                        boxShadow: "0 0 5px rgba(0, 229, 255, 0.5)",
+                                    }}
+                                    value={newMessage}
+                                    onChange={typingHandler}
+                                />
+                                <InputRightElement width="4.5rem" display="flex" gap={1}>
+                                    <IconButton
+                                        icon={<AttachmentIcon />}
+                                        size="sm"
+                                        bg="transparent"
+                                        color={fileUrl ? "cyan.400" : "whiteAlpha.600"}
+                                        _hover={{ bg: "whiteAlpha.200", color: "cyan.300" }}
+                                        onClick={() => fileInputRef.current.click()}
+                                    />
+                                    <IconButton
+                                        icon={<ArrowForwardIcon />}
+                                        size="sm"
+                                        colorScheme="cyan"
+                                        variant="ghost"
+                                        isDisabled={!newMessage && !fileUrl}
+                                        onClick={sendMessage}
+                                        aria-label="Send Message"
+                                    />
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        style={{ display: "none" }}
+                                        onChange={(e) => postDetails(e.target.files[0])}
+                                    />
+                                </InputRightElement>
+                            </InputGroup>
                         </FormControl>
                     </Box>
                 </>
             ) : (
-                // to get socket.io on same page
                 <Box display="flex" alignItems="center" justifyContent="center" h="100%">
                     <Text fontSize="3xl" pb={3} fontFamily="Work sans" color="whiteAlpha.700">
                         Click on a user to start chatting

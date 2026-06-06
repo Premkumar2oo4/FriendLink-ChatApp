@@ -8,7 +8,7 @@ import {
 } from "../config/ChatLogics";
 import { ChatState } from "../Context/ChatProvider";
 import { Avatar, Tooltip, Box, IconButton, Input, useToast } from "@chakra-ui/react";
-import { EditIcon, DeleteIcon, CheckIcon, CloseIcon } from "@chakra-ui/icons";
+import { EditIcon, DeleteIcon, CheckIcon, CloseIcon, ViewIcon, ExternalLinkIcon, DownloadIcon } from "@chakra-ui/icons";
 import axios from "axios";
 
 const ScrollableChat = ({ messages, onMessageEdited, onMessageDeleted }) => {
@@ -88,7 +88,7 @@ const ScrollableChat = ({ messages, onMessageEdited, onMessageDeleted }) => {
         const isDelivered = m.deliveredTo && m.deliveredTo.length > 0;
 
         if (isRead) {
-            return <span style={{ color: "#007A33", fontWeight: "bold" }}>✓✓</span>;
+            return <ViewIcon color="blue.500" />;
         } else if (isDelivered) {
             return <span style={{ color: "rgba(0, 0, 0, 0.55)", fontWeight: "bold" }}>✓✓</span>;
         } else {
@@ -195,16 +195,88 @@ const ScrollableChat = ({ messages, onMessageEdited, onMessageDeleted }) => {
                                             fontWeight: "500",
                                             boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
                                             display: "inline-flex",
-                                            alignItems: "center",
-                                            gap: "6px",
+                                            flexDirection: "column",
+                                            alignItems: "flex-end",
+                                            gap: "2px",
                                         }}
                                     >
-                                        {m.content}
-                                        {isCurrentUser && (
-                                            <Box as="span" display="inline-flex" fontSize="12px" ml={1}>
-                                                {renderCheckmarks(m)}
-                                            </Box>
-                                        )}
+                                        <div style={{ alignSelf: "flex-start", display: "flex", flexDirection: "column", gap: "6px" }}>
+                                            {m.fileUrl && (
+                                                <Box mb={2}>
+                                                    {m.fileType && m.fileType.startsWith("image/") ? (
+                                                        <Box position="relative" display="inline-block">
+                                                            <a href={m.fileUrl} target="_blank" rel="noopener noreferrer">
+                                                                <img 
+                                                                    src={m.fileUrl} 
+                                                                    alt="attachment" 
+                                                                    style={{ 
+                                                                        maxWidth: "200px", 
+                                                                        maxHeight: "200px", 
+                                                                        borderRadius: "10px",
+                                                                        cursor: "pointer" 
+                                                                    }} 
+                                                                />
+                                                            </a>
+                                                            <IconButton
+                                                                as="a"
+                                                                href={m.fileUrl}
+                                                                download
+                                                                target="_blank"
+                                                                icon={<DownloadIcon />}
+                                                                size="xs"
+                                                                position="absolute"
+                                                                bottom="5px"
+                                                                right="5px"
+                                                                colorScheme="blackAlpha"
+                                                                borderRadius="full"
+                                                                aria-label="Download Image"
+                                                            />
+                                                        </Box>
+                                                    ) : (
+                                                        <Box 
+                                                            display="flex" 
+                                                            alignItems="center" 
+                                                            p={2} 
+                                                            bg="rgba(255, 255, 255, 0.1)" 
+                                                            borderRadius="10px"
+                                                            gap={3}
+                                                        >
+                                                            <ExternalLinkIcon color="cyan.300" />
+                                                            <a 
+                                                                href={m.fileUrl} 
+                                                                target="_blank" 
+                                                                rel="noopener noreferrer"
+                                                                style={{ textDecoration: "none", fontSize: "13px", color: "white" }}
+                                                            >
+                                                                View Document
+                                                            </a>
+                                                            <IconButton
+                                                                as="a"
+                                                                href={m.fileUrl}
+                                                                download
+                                                                target="_blank"
+                                                                icon={<DownloadIcon />}
+                                                                size="xs"
+                                                                colorScheme="cyan"
+                                                                variant="ghost"
+                                                                aria-label="Download"
+                                                            />
+                                                        </Box>
+                                                    )}
+                                                </Box>
+                                            )}
+                                            {m.content && <div>{m.content}</div>}
+                                        </div>
+                                        <div style={{ 
+                                            fontSize: "10px", 
+                                            opacity: 0.7, 
+                                            display: "flex", 
+                                            alignItems: "center", 
+                                            gap: "4px" 
+                                        }}>
+                                            {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            {isCurrentUser && renderCheckmarks(m)}
+                                        </div>
                                     </span>
                                 )}
                             </Box>

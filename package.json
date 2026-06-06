@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node backend/server.js",
-    "build": "npm install && npm install --prefix frontend && npm run build --prefix frontend"
+    "build": "npm install && npm install --prefix frontend --production=false && npm run build --prefix frontend"
   },
   "keywords": [
     "mern",
@@ -21,7 +21,9 @@
     "express-async-handler": "^1.2.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.1.1",
-    "nodemon": "^3.1.11",
     "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
   }
 }

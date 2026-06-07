@@ -1,58 +1,63 @@
 require('dotenv').config()
-const express=require('express')
+const express = require('express')
+const cors = require('cors')
 const { chats } = require('./data/data')
-const connectDB=require('./config/db')
-const userRouter=require('./router/userRouter')
-const chatsRouter=require('./router/chatsRouter')
-const {notFound,errorHandler}=require('./middleware/errorhandler')
-const messageRouter=require('./router/messageRouter')
+const connectDB = require('./config/db')
+const userRouter = require('./router/userRouter')
+const chatsRouter = require('./router/chatsRouter')
+const { notFound, errorHandler } = require('./middleware/errorhandler')
+const messageRouter = require('./router/messageRouter')
 const PORT = process.env.PORT || 5000
-const app=express()
+const app = express()
+const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173', process.env.FRONTEND_URL].filter(Boolean)
+
+app.use(cors({ origin: allowedOrigins, credentials: true }))
 app.use(express.json())
-const path= require('path')
+const path = require('path')
 
 connectDB()
 
-app.use('/api/user',userRouter)
-app.use('/api/chat',chatsRouter)
-app.use('/api/message',messageRouter)
+app.use('/api/user', userRouter)
+app.use('/api/chat', chatsRouter)
+app.use('/api/message', messageRouter)
 
 
 app.use(notFound);
-app.use(errorHandler) ;
+app.use(errorHandler);
 
-const server=app.listen(PORT,()=>{
+const server = app.listen(PORT, () => {
     console.log("server connected at Point http://localhost:5000");
-    
+
 })
-const io=require('socket.io')(server,{
-    pingTimeout:60000,
-    cors:{
-        origin:["http://localhost:3000", "http://localhost:5173"]
+const io = require('socket.io')(server, {
+    pingTimeout: 60000,
+    cors: {
+        origin: allowedOrigins,
+        credentials: true,
     },
 });
 
-io.on("connection",(socket)=>{
-    console.log("connected to soket.io",socket.id);
-    socket.on("setup",(userData)=>{
+io.on("connection", (socket) => {
+    console.log("connected to soket.io", socket.id);
+    socket.on("setup", (userData) => {
         socket.join(userData._id);
-        console.log("User joined room",userData._id);
+        console.log("User joined room", userData._id);
         socket.emit("connected")
     })
-    socket.on("join chat",(room)=>{
+    socket.on("join chat", (room) => {
         socket.join(room);
-        console.log("User joined room",room);
+        console.log("User joined room", room);
     })
-    socket.on('new message',(newMessageRecieved)=>{
+    socket.on('new message', (newMessageRecieved) => {
         var chat = newMessageRecieved.chat;
 
-    if (!chat.users) return console.log("chat.users not defined");
+        if (!chat.users) return console.log("chat.users not defined");
 
-    chat.users.forEach((user) => {
-      if (user._id.toString() === newMessageRecieved.sender._id.toString()) return;
+        chat.users.forEach((user) => {
+            if (user._id.toString() === newMessageRecieved.sender._id.toString()) return;
 
-      socket.in(user._id.toString()).emit("message received", newMessageRecieved);
-    });
+            socket.in(user._id.toString()).emit("message received", newMessageRecieved);
+        });
     })
 
     socket.on("message read", ({ chatId, userId }) => {

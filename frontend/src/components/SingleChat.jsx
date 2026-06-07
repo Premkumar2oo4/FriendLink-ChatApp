@@ -24,7 +24,8 @@ import animationData from "../animations/typing.json";
 import io from "socket.io-client";
 import UpdateGroupChatModal from "./miscellaneous/UpdateGroupChatModal";
 import { ChatState } from "../Context/ChatProvider";
-const ENDPOINT = window.location.origin;
+
+const ENDPOINT = import.meta.env.VITE_API_URL || window.location.origin;
 
 const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     const [messages, setMessages] = useState([]);
@@ -73,7 +74,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
             };
             reader.readAsDataURL(file);
         } else {
-            setFilePreview(""); 
+            setFilePreview("");
         }
 
         const data = new FormData();
@@ -444,16 +445,16 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                             ) : (
                                 <></>
                             )}
-                            
+
                             {/* File Preview Area */}
                             {(filePreview || (fileUrl && !filePreview)) && (
                                 <Box position="relative" mb={2} display="inline-block" maxW="200px">
                                     {fileType.startsWith("image/") || filePreview.startsWith("data:image") ? (
-                                        <Image 
-                                            src={filePreview || fileUrl} 
-                                            alt="preview" 
-                                            borderRadius="md" 
-                                            maxH="150px" 
+                                        <Image
+                                            src={filePreview || fileUrl}
+                                            alt="preview"
+                                            borderRadius="md"
+                                            maxH="150px"
                                             opacity={loading ? 0.6 : 1}
                                         />
                                     ) : (
@@ -462,12 +463,12 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                                         </Box>
                                     )}
                                     {loading && <Spinner position="absolute" top="45%" left="45%" size="sm" color="cyan.400" />}
-                                    <CloseButton 
-                                        position="absolute" 
-                                        top="-10px" 
-                                        right="-10px" 
-                                        bg="red.500" 
-                                        size="sm" 
+                                    <CloseButton
+                                        position="absolute"
+                                        top="-10px"
+                                        right="-10px"
+                                        bg="red.500"
+                                        size="sm"
                                         borderRadius="full"
                                         onClick={() => {
                                             setFileUrl("");

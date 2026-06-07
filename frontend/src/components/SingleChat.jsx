@@ -24,8 +24,7 @@ import animationData from "../animations/typing.json";
 import io from "socket.io-client";
 import UpdateGroupChatModal from "./miscellaneous/UpdateGroupChatModal";
 import { ChatState } from "../Context/ChatProvider";
-const ENDPOINT = window.location.origin; // Dynamically use the current origin
-var socket, selectedChatCompare;
+const ENDPOINT = window.location.origin;
 
 const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     const [messages, setMessages] = useState([]);
@@ -38,6 +37,8 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     const [fileType, setFileType] = useState("");
     const [filePreview, setFilePreview] = useState("");
     const fileInputRef = useRef(null);
+    const socketRef = useRef();
+    const selectedChatCompareRef = useRef();
     const toast = useToast();
 
     const defaultOptions = {
@@ -132,9 +133,9 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
             setMessages(data);
             setLoading(false);
 
-            if (socket) {
-                socket.emit("join chat", selectedChat._id);
-                socket.emit("message read", { chatId: selectedChat._id, userId: user._id });
+            if (socketRef.current) {
+                socketRef.current.emit("join chat", selectedChat._id);
+                socketRef.current.emit("message read", { chatId: selectedChat._id, userId: user._id });
             }
         } catch (_error) {
             toast({
@@ -150,7 +151,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
 
     const sendMessage = async (event) => {
         if ((event.type === "click" || event.key === "Enter") && (newMessage || fileUrl)) {
-            socket.emit("stop typing", selectedChat._id);
+            if (socketRef.current) socketRef.current.emit("stop typing", selectedChat._id);
             try {
                 const config = {
                     headers: {
@@ -179,7 +180,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                     messageData,
                     config
                 );
-                if (socket) socket.emit("new message", data);
+                if (socketRef.current) socketRef.current.emit("new message", data);
                 setMessages([...messages, data]);
             } catch (_error) {
                 toast({
@@ -195,37 +196,26 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     };
 
     useEffect(() => {
-        socket = io(ENDPOINT);
-        socket.emit("setup", user);
-        socket.on("connected", () => setSocketConnected(true));
-        socket.on("typing", () => setIsTyping(true));
-        socket.on("stop typing", () => setIsTyping(false));
+        socketRef.current = io(ENDPOINT);
+        socketRef.current.emit("setup", user);
+        socketRef.current.on("connected", () => setSocketConnected(true));
+        socketRef.current.on("typing", () => setIsTyping(true));
+        socketRef.current.on("stop typing", () => setIsTyping(false));
 
         return () => {
-            socket.disconnect();
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+            }
         };
-        // eslint-disable-next-line
-    }, []);
+    }, [user]);
 
     useEffect(() => {
-        fetchMessages();
+        if (!socketRef.current) return;
 
-        if (selectedChat) {
-            setNotification((prev) => prev.filter((n) => n.chat._id !== selectedChat._id));
-        }
-
-        if (socket && selectedChatCompare) {
-            socket.emit("leave chat", selectedChatCompare._id);
-        }
-        selectedChatCompare = selectedChat;
-        // eslint-disable-next-line
-    }, [selectedChat]);
-
-    useEffect(() => {
-        socket.on("message received", (newMessageRecieved) => {
+        const messageReceivedHandler = (newMessageRecieved) => {
             if (
-                !selectedChatCompare || // if chat is not selected or doesn't match current chat
-                selectedChatCompare._id !== newMessageRecieved.chat._id
+                !selectedChatCompareRef.current ||
+                selectedChatCompareRef.current._id !== newMessageRecieved.chat._id
             ) {
                 setNotification((prev) => {
                     if (!prev.find((n) => n._id === newMessageRecieved._id)) {
@@ -235,39 +225,37 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                 });
                 setFetchAgain(!fetchAgain);
 
-                    // Mark as delivered since we received it in the background/another chat
-                    axios.put("/api/message/deliver", { chatId: newMessageRecieved.chat._id }, {
-                        headers: { Authorization: `Bearer ${user.token}` }
-                    }).then(() => {
-                        socket.emit("message delivered", { messageId: newMessageRecieved._id, chatId: newMessageRecieved.chat._id, userId: user._id });
-                    }).catch(err => console.log(err));
-            } else {
-                setMessages((prevMessages) => [...prevMessages, newMessageRecieved]);
-                // Automatically mark as read if user is viewing this chat
-                axios.put("/api/message/read", { chatId: selectedChatCompare._id }, {
+                axios.put("/api/message/deliver", { chatId: newMessageRecieved.chat._id }, {
                     headers: { Authorization: `Bearer ${user.token}` }
                 }).then(() => {
-                    socket.emit("message read", { chatId: selectedChatCompare._id, userId: user._id });
+                    if (socketRef.current) socketRef.current.emit("message delivered", { messageId: newMessageRecieved._id, chatId: newMessageRecieved.chat._id, userId: user._id });
+                }).catch(err => console.log(err));
+            } else {
+                setMessages((prevMessages) => [...prevMessages, newMessageRecieved]);
+                axios.put("/api/message/read", { chatId: selectedChatCompareRef.current._id }, {
+                    headers: { Authorization: `Bearer ${user.token}` }
+                }).then(() => {
+                    if (socketRef.current) socketRef.current.emit("message read", { chatId: selectedChatCompareRef.current._id, userId: user._id });
                 }).catch(err => console.log(err));
             }
-        });
+        };
 
-        socket.on("message edited", (updatedMessage) => {
-            if (selectedChatCompare && selectedChatCompare._id === updatedMessage.chat._id) {
+        const messageEditedHandler = (updatedMessage) => {
+            if (selectedChatCompareRef.current && selectedChatCompareRef.current._id === updatedMessage.chat._id) {
                 setMessages((prevMessages) =>
                     prevMessages.map((msg) => (msg._id === updatedMessage._id ? updatedMessage : msg))
                 );
             }
-        });
+        };
 
-        socket.on("message deleted", ({ messageId, chatId }) => {
-            if (selectedChatCompare && selectedChatCompare._id === chatId) {
+        const messageDeletedHandler = ({ messageId, chatId }) => {
+            if (selectedChatCompareRef.current && selectedChatCompareRef.current._id === chatId) {
                 setMessages((prevMessages) => prevMessages.filter((msg) => msg._id !== messageId));
             }
-        });
+        };
 
-        socket.on("message read", ({ chatId, userId }) => {
-            if (selectedChatCompare && selectedChatCompare._id === chatId) {
+        const messageReadHandler = ({ chatId, userId }) => {
+            if (selectedChatCompareRef.current && selectedChatCompareRef.current._id === chatId) {
                 setMessages((prevMessages) =>
                     prevMessages.map((msg) => {
                         if (msg.sender._id === user._id) {
@@ -276,7 +264,6 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                                 return {
                                     ...msg,
                                     readBy: [...(msg.readBy || []), { _id: userId }],
-                                    // If read, it is also delivered
                                     deliveredTo: msg.deliveredTo && msg.deliveredTo.some(u => (u._id || u) === userId)
                                         ? msg.deliveredTo
                                         : [...(msg.deliveredTo || []), { _id: userId }]
@@ -287,10 +274,10 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                     })
                 );
             }
-        });
+        };
 
-        socket.on("message delivered", ({ chatId, userId }) => {
-            if (selectedChatCompare && selectedChatCompare._id === chatId) {
+        const messageDeliveredHandler = ({ chatId, userId }) => {
+            if (selectedChatCompareRef.current && selectedChatCompareRef.current._id === chatId) {
                 setMessages((prevMessages) =>
                     prevMessages.map((msg) => {
                         if (msg.sender._id === user._id) {
@@ -306,16 +293,38 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                     })
                 );
             }
-        });
+        };
+
+        socketRef.current.on("message received", messageReceivedHandler);
+        socketRef.current.on("message edited", messageEditedHandler);
+        socketRef.current.on("message deleted", messageDeletedHandler);
+        socketRef.current.on("message read", messageReadHandler);
+        socketRef.current.on("message delivered", messageDeliveredHandler);
 
         return () => {
-            socket.off("message received");
-            socket.off("message edited");
-            socket.off("message deleted");
-            socket.off("message read");
-            socket.off("message delivered");
+            if (socketRef.current) {
+                socketRef.current.off("message received", messageReceivedHandler);
+                socketRef.current.off("message edited", messageEditedHandler);
+                socketRef.current.off("message deleted", messageDeletedHandler);
+                socketRef.current.off("message read", messageReadHandler);
+                socketRef.current.off("message delivered", messageDeliveredHandler);
+            }
         };
-    });
+    }, [fetchAgain, setFetchAgain, user]);
+
+    useEffect(() => {
+        fetchMessages();
+
+        if (selectedChat) {
+            setNotification((prev) => prev.filter((n) => n.chat._id !== selectedChat._id));
+        }
+
+        if (socketRef.current && selectedChatCompareRef.current) {
+            socketRef.current.emit("leave chat", selectedChatCompareRef.current._id);
+        }
+        selectedChatCompareRef.current = selectedChat;
+    }, [selectedChat]);
+
 
     const typingHandler = (e) => {
         setNewMessage(e.target.value);
@@ -324,7 +333,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
 
         if (!typing) {
             setTyping(true);
-            socket.emit("typing", selectedChat._id);
+            if (socketRef.current) socketRef.current.emit("typing", selectedChat._id);
         }
         let lastTypingTime = new Date().getTime();
         var timerLength = 3000;
@@ -332,7 +341,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
             var timeNow = new Date().getTime();
             var timeDiff = timeNow - lastTypingTime;
             if (timeDiff >= timerLength && typing) {
-                socket.emit("stop typing", selectedChat._id);
+                if (socketRef.current) socketRef.current.emit("stop typing", selectedChat._id);
                 setTyping(false);
             }
         }, timerLength);
@@ -407,11 +416,11 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                                     messages={messages}
                                     onMessageEdited={(updatedMsg) => {
                                         setMessages(messages.map((msg) => msg._id === updatedMsg._id ? updatedMsg : msg));
-                                        if (socket) socket.emit("message edited", updatedMsg);
+                                        if (socketRef.current) socketRef.current.emit("message edited", updatedMsg);
                                     }}
                                     onMessageDeleted={(deletedMsgId) => {
                                         setMessages(messages.filter((msg) => msg._id !== deletedMsgId));
-                                        if (socket) socket.emit("message deleted", { messageId: deletedMsgId, chatId: selectedChat._id });
+                                        if (socketRef.current) socketRef.current.emit("message deleted", { messageId: deletedMsgId, chatId: selectedChat._id });
                                     }}
                                 />
                             </div>

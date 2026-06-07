@@ -17,20 +17,7 @@ app.use('/api/user',userRouter)
 app.use('/api/chat',chatsRouter)
 app.use('/api/message',messageRouter)
 
-//---------------------Deployment----------------------------
-const __dirname1 = path.resolve();
-if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.join(__dirname1, "/frontend/dist")));
 
-    app.get('*', (req, res) => {
-        res.sendFile(path.resolve(__dirname1, "frontend", "dist", "index.html"));
-    });
-} else {
-    app.get('/', (req, res) => {
-        res.send("API is RUNNING SUCCESSFULLY");
-    });
-}
-//---------------------Deployment----------------------------
 app.use(notFound);
 app.use(errorHandler) ;
 
@@ -62,9 +49,9 @@ io.on("connection",(socket)=>{
     if (!chat.users) return console.log("chat.users not defined");
 
     chat.users.forEach((user) => {
-      if (user._id === newMessageRecieved.sender._id) return;
+      if (user._id.toString() === newMessageRecieved.sender._id.toString()) return;
 
-      socket.in(user._id).emit("message received", newMessageRecieved);
+      socket.in(user._id.toString()).emit("message received", newMessageRecieved);
     });
     })
 

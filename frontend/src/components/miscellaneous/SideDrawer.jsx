@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { BellIcon, ChevronDownIcon } from "@chakra-ui/icons";
 import { LuSearch } from "react-icons/lu";
 import ProfileModal from "./ProfileModal";
+import SettingsModal from "./SettingsModal";
 import { useDisclosure } from "@chakra-ui/react"; 
 import { Input } from "@chakra-ui/react";
 import ChatLoading from '../ChatLoading'
@@ -178,8 +179,12 @@ function SideDrawer() {
 
           <MenuList backgroundColor='cyan.900'>
             <ProfileModal user={user}>
-            <MenuItem backgroundColor='transparent'>My Profile</MenuItem>
+              <MenuItem backgroundColor='transparent'>My Profile</MenuItem>
             </ProfileModal>
+            <MenuDivider/>
+            <SettingsModal user={user}>
+              <MenuItem backgroundColor='transparent'>Settings</MenuItem>
+            </SettingsModal>
             <MenuDivider/>
             <MenuItem backgroundColor='transparent' onClick={logouthandler}>Logout</MenuItem>
           </MenuList>

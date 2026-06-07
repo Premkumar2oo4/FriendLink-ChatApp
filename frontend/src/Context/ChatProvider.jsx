@@ -15,7 +15,8 @@ const ChatProvider = ({ children }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user && window.location.pathname !== "/") {
+    const publicPaths = ["/", "/auth"];
+    if (!user && !publicPaths.includes(window.location.pathname)) {
       navigate("/");
     }
   }, [user, navigate]);

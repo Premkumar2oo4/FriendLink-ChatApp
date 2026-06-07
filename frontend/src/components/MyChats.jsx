@@ -96,7 +96,16 @@ const MyChats = ({ fetchAgain }) => {
       >
         {chats ? (
           <Stack spacing={2} overflowY="scroll">
-            {chats.map((chat) => (
+            {chats
+              .filter((chat) => {
+                // Filter out 1-to-1 chats that don't have exactly 2 users
+                // This handles cases where a user might have been deleted
+                if (!chat.isGroupChat && (!chat.users || chat.users.length < 2)) {
+                  return false;
+                }
+                return true;
+              })
+              .map((chat) => (
               <Box
                 onClick={() => {
                   setSelectedChat(chat);

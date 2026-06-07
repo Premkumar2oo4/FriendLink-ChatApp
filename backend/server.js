@@ -18,6 +18,47 @@ app.use('/api/user', userRouter)
 app.use('/api/chat', chatsRouter)
 app.use('/api/message', messageRouter)
 
+// Automated Guest Cleanup (Runs every hour)
+const User = require("./models/userModel");
+const Chat = require("./models/chatModel");
+const Message = require("./models/messageModel");
+
+setInterval(async () => {
+    try {
+        const oneHourAgo = new Date(Date.now() - 3600000);
+        const guestUsers = await User.find({
+            isGuest: true,
+            createdAt: { $lt: oneHourAgo }
+        });
+
+        if (guestUsers.length > 0) {
+            const guestIds = guestUsers.map(u => u._id);
+            
+            // Delete guest users
+            await User.deleteMany({ _id: { $in: guestIds } });
+            
+            // Delete messages sent by guests
+            await Message.deleteMany({ sender: { $in: guestIds } });
+
+            // 1. Delete all 1-to-1 chats involving these guests
+            await Chat.deleteMany({
+                isGroupChat: false,
+                users: { $in: guestIds }
+            });
+
+            // 2. Remove guests from all group chats
+            await Chat.updateMany(
+                { isGroupChat: true, users: { $in: guestIds } },
+                { $pull: { users: { $in: guestIds } } }
+            );
+            
+            console.log(`Cleaned up ${guestUsers.length} guest users and their associated data.`);
+        }
+    } catch (error) {
+        console.error("Guest cleanup error:", error);
+    }
+}, 3600000); // Check every hour
+
 
 app.use(notFound);
 app.use(errorHandler);

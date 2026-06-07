@@ -1,7 +1,7 @@
 services:
   - type: web
     name: friendlink-backend
-    runtime: node
+    env: node
     plan: free
     rootDir: .
     buildCommand: npm install
@@ -21,11 +21,11 @@ services:
 
   - type: web
     name: friendlink-frontend
-    runtime: static
+    env: static
     plan: free
     rootDir: frontend
     buildCommand: npm install && npm run build
-    publishPath: dist
+    staticPublishPath: dist
     routes:
       - type: rewrite
         source: /*

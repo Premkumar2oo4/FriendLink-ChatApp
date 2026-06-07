@@ -5,7 +5,6 @@ import { BrowserRouter } from 'react-router-dom'
 import ChatProvider from './Context/ChatProvider.jsx'
 import axios from 'axios'
 
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || ''
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>

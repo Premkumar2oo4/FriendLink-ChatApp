@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node backend/server.js",
-    "build": "npm install && npm install --prefix frontend --production=false && npm run build --prefix frontend"
+    "server": "nodemon backend/server.js"
   },
   "keywords": [
     "mern",

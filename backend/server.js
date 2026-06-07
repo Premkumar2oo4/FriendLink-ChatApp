@@ -1,7 +1,6 @@
 require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
-const { chats } = require('./data/data')
 const connectDB = require('./config/db')
 const userRouter = require('./router/userRouter')
 const chatsRouter = require('./router/chatsRouter')
@@ -9,12 +8,9 @@ const { notFound, errorHandler } = require('./middleware/errorhandler')
 const messageRouter = require('./router/messageRouter')
 const PORT = process.env.PORT || 5000
 const app = express()
-const frontendUrl = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace(/\/$/, "") : "";
-const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173', frontendUrl].filter(Boolean)
 
-app.use(cors({ origin: allowedOrigins, credentials: true }))
+app.use(cors())
 app.use(express.json())
-const path = require('path')
 
 connectDB()
 
@@ -27,14 +23,14 @@ app.use(notFound);
 app.use(errorHandler);
 
 const server = app.listen(PORT, () => {
-    console.log("server connected at Point http://localhost:5000");
+    console.log(`server connected at http://localhost:${PORT}`);
 
 })
 const io = require('socket.io')(server, {
     pingTimeout: 60000,
     cors: {
-        origin: allowedOrigins,
-        credentials: true,
+        origin: ["http://localhost:5173", "http://localhost:3000"],
+        methods: ["GET", "POST"]
     },
 });
 

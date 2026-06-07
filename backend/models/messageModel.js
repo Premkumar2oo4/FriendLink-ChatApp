@@ -1,5 +1,4 @@
 const mongoose=require('mongoose')
-const { applyTimestamps } = require('./chatModel')
 const messageModel=mongoose.Schema({
     sender:{type:mongoose.Schema.Types.ObjectId,ref:'User'},
     content: { type: String,trim:true},

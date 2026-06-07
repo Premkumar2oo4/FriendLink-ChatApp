@@ -14,10 +14,7 @@ services:
       - key: MONGO_URI
         sync: false
       - key: FRONTEND_URL
-        fromService:
-          type: web
-          name: friendlink-frontend
-          property: url
+        value: https://friendlink-frontend.onrender.com
 
   - type: web
     name: friendlink-frontend
@@ -32,7 +29,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: friendlink-backend
-          property: url
+        value: https://friendlink-backend.onrender.com

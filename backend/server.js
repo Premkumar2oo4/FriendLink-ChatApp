@@ -9,7 +9,8 @@ const { notFound, errorHandler } = require('./middleware/errorhandler')
 const messageRouter = require('./router/messageRouter')
 const PORT = process.env.PORT || 5000
 const app = express()
-const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173', process.env.FRONTEND_URL].filter(Boolean)
+const frontendUrl = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace(/\/$/, "") : "";
+const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173', frontendUrl].filter(Boolean)
 
 app.use(cors({ origin: allowedOrigins, credentials: true }))
 app.use(express.json())

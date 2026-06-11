@@ -47,3 +47,31 @@ export const getSenderFull = (loggedUser, users) => {
     if (!users || users.length < 2) return null;
     return users[0]?._id === loggedUser?._id ? users[1] : users[0];
 };
+
+export const getChatDate = (date) => {
+    const today = new Date();
+    const messageDate = new Date(date);
+
+    if (messageDate.toDateString() === today.toDateString()) {
+        return "Today";
+    }
+
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    if (messageDate.toDateString() === yesterday.toDateString()) {
+        return "Yesterday";
+    }
+
+    return messageDate.toLocaleDateString([], {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+    });
+};
+
+export const isNewDay = (messages, i) => {
+    if (i === 0) return true;
+    const currentMsgDate = new Date(messages[i].createdAt).toDateString();
+    const prevMsgDate = new Date(messages[i - 1].createdAt).toDateString();
+    return currentMsgDate !== prevMsgDate;
+};

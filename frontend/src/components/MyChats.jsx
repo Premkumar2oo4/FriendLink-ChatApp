@@ -1,5 +1,5 @@
-import { AddIcon } from "@chakra-ui/icons";
-import { Box, Stack, Text, Button, Avatar, Badge } from "@chakra-ui/react";
+import { AddIcon, DeleteIcon } from "@chakra-ui/icons";
+import { Box, Stack, Text, Button, Avatar, Badge, IconButton } from "@chakra-ui/react";
 import { useToast } from "@chakra-ui/react";
 import axios from "axios";
 import { useEffect, useState } from "react";
@@ -8,7 +8,7 @@ import ChatLoading from "./ChatLoading";
 import GroupChatModal from "./miscellaneous/GroupChatModal";
 import { ChatState } from "../Context/ChatProvider";
 
-const MyChats = ({ fetchAgain }) => {
+const MyChats = ({ fetchAgain, setFetchAgain }) => {
   const [loggedUser, setLoggedUser] = useState();
 
   const { selectedChat, setSelectedChat, user, chats, setChats, notification, setNotification } = ChatState();
@@ -34,6 +34,42 @@ const MyChats = ({ fetchAgain }) => {
         duration: 5000,
         isClosable: true,
         position: "bottom-left",
+      });
+    }
+  };
+
+  const deleteChatHandler = async (e, chat) => {
+    e.stopPropagation(); // Prevent selecting the chat when clicking delete
+    try {
+      const config = {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+        },
+      };
+
+      await axios.put("/api/chat/delete", { chatId: chat._id }, config);
+      
+      toast({
+        title: "Chat deleted for you",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+        position: "bottom",
+      });
+
+      if (selectedChat?._id === chat._id) {
+        setSelectedChat("");
+      }
+      
+      setFetchAgain(!fetchAgain);
+    } catch (error) {
+      toast({
+        title: "Error deleting chat",
+        description: error.response?.data?.message || "Something went wrong",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+        position: "bottom",
       });
     }
   };
@@ -146,7 +182,7 @@ const MyChats = ({ fetchAgain }) => {
                     src={
                       !chat.isGroupChat
                         ? getSenderFull(loggedUser, chat.users)?.pic
-                        : ""
+                        : chat.chatPic
                     }
                   />
                   <Box flex={1}>
@@ -156,27 +192,43 @@ const MyChats = ({ fetchAgain }) => {
                         : chat.chatName}
                     </Text>
 
-                    {chat.latestMessage && (
+                    {chat.latestMessage && chat.latestMessage.sender && (
                       <Text fontSize="xs" opacity="0.8">
                         <b>{chat.latestMessage.sender.name} :</b>{" "}
-                        {chat.latestMessage.content.length > 50
-                          ? chat.latestMessage.content.substring(0, 51) + "..."
-                          : chat.latestMessage.content}
+                        {chat.latestMessage.content
+                          ? chat.latestMessage.content.length > 50
+                            ? chat.latestMessage.content.substring(0, 51) + "..."
+                            : chat.latestMessage.content
+                          : chat.latestMessage.fileUrl
+                          ? "Sent a file"
+                          : ""}
                       </Text>
                     )}
                   </Box>
                 </Box>
-                {notification.filter((n) => n.chat._id === chat._id).length > 0 && (
+                {notification.filter((n) => (n.chat?._id || n.chat) === chat._id).length > 0 && (
                   <Badge
                     colorScheme="red"
                     borderRadius="full"
                     px={2}
                     py={0.5}
                     ml={2}
+                    minW="20px"
+                    textAlign="center"
                   >
-                    {notification.filter((n) => n.chat._id === chat._id).length}
+                    {notification.filter((n) => (n.chat?._id || n.chat) === chat._id).length}
                   </Badge>
                 )}
+                <IconButton
+                  ml={2}
+                  size="xs"
+                  aria-label="Delete chat"
+                  icon={<DeleteIcon />}
+                  colorScheme="red"
+                  variant="ghost"
+                  _hover={{ bg: "red.500", color: "white" }}
+                  onClick={(e) => deleteChatHandler(e, chat)}
+                />
               </Box>
             ))}
           </Stack>

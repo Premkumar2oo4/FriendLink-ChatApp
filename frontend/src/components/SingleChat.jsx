@@ -10,12 +10,13 @@ import {
     useToast,
     Image,
     CloseButton,
+    Avatar,
 } from "@chakra-ui/react";
 import "./style.css";
 import { getSender, getSenderFull } from "../config/ChatLogics";
 import { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { ArrowBackIcon, AttachmentIcon, ArrowForwardIcon } from "@chakra-ui/icons";
+import { ArrowBackIcon, AttachmentIcon, ArrowForwardIcon, DeleteIcon } from "@chakra-ui/icons";
 import ProfileModal from "./miscellaneous/ProfileModal";
 import ScrollableChat from "./ScrollableChat";
 import Lottie from "react-lottie";
@@ -52,6 +53,44 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
     };
     const { selectedChat, setSelectedChat, user, notification, setNotification } =
         ChatState();
+
+    const notificationRef = useRef([]);
+    useEffect(() => {
+        notificationRef.current = notification;
+    }, [notification]);
+
+    const deleteChatHandler = async () => {
+        if (!selectedChat) return;
+        try {
+            const config = {
+                headers: {
+                    Authorization: `Bearer ${user.token}`,
+                },
+            };
+
+            await axios.put("/api/chat/delete", { chatId: selectedChat._id }, config);
+
+            toast({
+                title: "Chat deleted for you",
+                status: "success",
+                duration: 3000,
+                isClosable: true,
+                position: "bottom",
+            });
+
+            setSelectedChat("");
+            setFetchAgain(!fetchAgain);
+        } catch (error) {
+            toast({
+                title: "Error deleting chat",
+                description: error.response?.data?.message || "Something went wrong",
+                status: "error",
+                duration: 5000,
+                isClosable: true,
+                position: "bottom",
+            });
+        }
+    };
 
     const postDetails = (file) => {
         setLoading(true);
@@ -218,13 +257,10 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                 !selectedChatCompareRef.current ||
                 selectedChatCompareRef.current._id !== newMessageRecieved.chat._id
             ) {
-                setNotification((prev) => {
-                    if (!prev.find((n) => n._id === newMessageRecieved._id)) {
-                        return [newMessageRecieved, ...prev];
-                    }
-                    return prev;
-                });
-                setFetchAgain(!fetchAgain);
+                if (!notificationRef.current.find((n) => n._id === newMessageRecieved._id)) {
+                    setNotification([newMessageRecieved, ...notificationRef.current]);
+                    setFetchAgain((prev) => !prev);
+                }
 
                 axios.put("/api/message/deliver", { chatId: newMessageRecieved.chat._id }, {
                     headers: { Authorization: `Bearer ${user.token}` }
@@ -247,12 +283,14 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                     prevMessages.map((msg) => (msg._id === updatedMessage._id ? updatedMessage : msg))
                 );
             }
+            setFetchAgain((prev) => !prev);
         };
 
         const messageDeletedHandler = ({ messageId, chatId }) => {
             if (selectedChatCompareRef.current && selectedChatCompareRef.current._id === chatId) {
                 setMessages((prevMessages) => prevMessages.filter((msg) => msg._id !== messageId));
             }
+            setFetchAgain((prev) => !prev);
         };
 
         const messageReadHandler = ({ chatId, userId }) => {
@@ -311,7 +349,7 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                 socketRef.current.off("message delivered", messageDeliveredHandler);
             }
         };
-    }, [fetchAgain, setFetchAgain, user]);
+    }, [fetchAgain, setFetchAgain, user, socketConnected]);
 
     useEffect(() => {
         fetchMessages();
@@ -375,19 +413,51 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                         {messages &&
                             (!selectedChat.isGroupChat ? (
                                 <>
+                                    <Box display="flex" alignItems="center">
+                                        <ProfileModal
+                                            user={getSenderFull(user, selectedChat.users)}
+                                        />
+                                        <IconButton
+                                            ml={2}
+                                            display="flex"
+                                            icon={<DeleteIcon />}
+                                            onClick={deleteChatHandler}
+                                            bg="transparent"
+                                            color="red.400"
+                                            _hover={{ bg: "whiteAlpha.200", color: "red.200" }}
+                                            aria-label="Delete Chat"
+                                        />
+                                    </Box>
                                     {getSender(user, selectedChat.users)}
-                                    <ProfileModal
-                                        user={getSenderFull(user, selectedChat.users)}
-                                    />
+                                    <Box w="40px" /> {/* Spacer for symmetry */}
                                 </>
                             ) : (
                                 <>
+                                    <Box display="flex" alignItems="center">
+                                        <Avatar
+                                            size="sm"
+                                            mr={2}
+                                            src={selectedChat.chatPic}
+                                            name={selectedChat.chatName}
+                                        />
+                                        <UpdateGroupChatModal
+                                            fetchMessages={fetchMessages}
+                                            fetchAgain={fetchAgain}
+                                            setFetchAgain={setFetchAgain}
+                                        />
+                                        <IconButton
+                                            ml={2}
+                                            display="flex"
+                                            icon={<DeleteIcon />}
+                                            onClick={deleteChatHandler}
+                                            bg="transparent"
+                                            color="red.400"
+                                            _hover={{ bg: "whiteAlpha.200", color: "red.200" }}
+                                            aria-label="Delete Chat"
+                                        />
+                                    </Box>
                                     {selectedChat.chatName.toUpperCase()}
-                                    <UpdateGroupChatModal
-                                        fetchMessages={fetchMessages}
-                                        fetchAgain={fetchAgain}
-                                        setFetchAgain={setFetchAgain}
-                                    />
+                                    <Box w="40px" /> {/* Spacer for symmetry */}
                                 </>
                             ))}
                     </Text>
@@ -416,11 +486,11 @@ const SingleChat = ({ fetchAgain, setFetchAgain }) => {
                                 <ScrollableChat
                                     messages={messages}
                                     onMessageEdited={(updatedMsg) => {
-                                        setMessages(messages.map((msg) => msg._id === updatedMsg._id ? updatedMsg : msg));
+                                        setMessages((prev) => prev.map((msg) => msg._id === updatedMsg._id ? updatedMsg : msg));
                                         if (socketRef.current) socketRef.current.emit("message edited", updatedMsg);
                                     }}
                                     onMessageDeleted={(deletedMsgId) => {
-                                        setMessages(messages.filter((msg) => msg._id !== deletedMsgId));
+                                        setMessages((prev) => prev.filter((msg) => msg._id !== deletedMsgId));
                                         if (socketRef.current) socketRef.current.emit("message deleted", { messageId: deletedMsgId, chatId: selectedChat._id });
                                     }}
                                 />

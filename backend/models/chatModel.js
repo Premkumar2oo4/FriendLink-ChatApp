@@ -16,6 +16,14 @@ const chatModel = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "User"
     },
+    chatPic: {
+        type: String,
+        default: "https://icon-library.com/images/anonymous-avatar-icon/anonymous-avatar-icon-25.jpg",
+    },
+    deletedBy: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+    }],
 },{
     timestamps:true,
 }

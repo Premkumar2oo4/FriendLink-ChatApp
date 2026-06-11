@@ -1,4 +1,4 @@
-import {Modal,ModalOverlay,ModalContent,ModalHeader,ModalFooter,ModalBody,ModalCloseButton,Button,useDisclosure,FormControl,Input,useToast,Box,} from "@chakra-ui/react";
+import {Modal,ModalOverlay,ModalContent,ModalHeader,ModalFooter,ModalBody,ModalCloseButton,Button,useDisclosure,FormControl,Input,useToast,Box,FormLabel,} from "@chakra-ui/react";
 import axios from "axios";
 import { useState } from "react";
 import { ChatState } from "../../Context/ChatProvider";
@@ -12,12 +12,66 @@ const GroupChatModal = ({ children }) => {
     const [search, setSearch] = useState("");
     const [searchResult, setSearchResult] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [chatPic, setChatPic] = useState();
+    const [picLoading, setPicLoading] = useState(false);
     const toast = useToast();
 
     const { user, chats, setChats } = ChatState();
 
+    const postDetails = (pics) => {
+        setPicLoading(true);
+        if (pics === undefined) {
+          toast({
+            title: "Please Select an Image!",
+            status: "warning",
+            duration: 5000,
+            isClosable: true,
+            position: "bottom",
+          });
+          setPicLoading(false);
+          return;
+        }
+    
+        if (pics.type === "image/jpeg" || pics.type === "image/png") {
+          const data = new FormData();
+          data.append("file", pics);
+          data.append("upload_preset", "FriendLink");
+          data.append("cloud_name", "dsg8zyvhe");
+          fetch("https://api.cloudinary.com/v1_1/dsg8zyvhe/image/upload", {
+            method: "post",
+            body: data,
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              setChatPic(data.url.toString());
+              setPicLoading(false);
+              toast({
+                title: "Group Logo Uploaded!",
+                status: "success",
+                duration: 3000,
+                isClosable: true,
+                position: "bottom",
+              });
+            })
+            .catch((err) => {
+              console.log(err);
+              setPicLoading(false);
+            });
+        } else {
+          toast({
+            title: "Please Select an Image!",
+            status: "warning",
+            duration: 5000,
+            isClosable: true,
+            position: "bottom",
+          });
+          setPicLoading(false);
+          return;
+        }
+      };
+
     const handleGroup = (userToAdd) => {
-        if (selectedUsers.includes(userToAdd)) {
+        if (selectedUsers.some((u) => u._id === userToAdd._id)) {
             toast({
                 title: "User already added",
                 status: "warning",
@@ -87,6 +141,7 @@ const GroupChatModal = ({ children }) => {
                 {
                     name: groupChatName,
                     users: JSON.stringify(selectedUsers.map((u) => u._id)),
+                    chatPic: chatPic,
                 },
                 config
             );
@@ -102,7 +157,7 @@ const GroupChatModal = ({ children }) => {
         } catch (error) {
             toast({
                 title: "Failed to Create the Chat!",
-                description: error.response.data,
+                description: error.response?.data?.message || "Something went wrong",
                 status: "error",
                 duration: 5000,
                 isClosable: true,
@@ -139,6 +194,7 @@ const GroupChatModal = ({ children }) => {
                     <ModalBody pt={6} pb={4}>
                         {/* Group Name */}
                         <FormControl mb={4}>
+                            <FormLabel>Group Name</FormLabel>
                             <Input
                                 placeholder="Enter Group Name"
                                 bg="rgba(255,255,255,0.08)"
@@ -149,8 +205,22 @@ const GroupChatModal = ({ children }) => {
                             />
                         </FormControl>
 
+                        {/* Group Logo */}
+                        <FormControl mb={4}>
+                            <FormLabel>Upload Group Logo</FormLabel>
+                            <Input
+                                type="file"
+                                p={1.5}
+                                accept="image/*"
+                                bg="rgba(255,255,255,0.08)"
+                                border="1px solid rgba(255,255,255,0.2)"
+                                onChange={(e) => postDetails(e.target.files[0])}
+                            />
+                        </FormControl>
+
                         {/* Search Users */}
                         <FormControl mb={3}>
+                            <FormLabel>Add Users</FormLabel>
                             <Input
                                 placeholder="Search Users..."
                                 bg="rgba(255,255,255,0.08)"
@@ -199,6 +269,7 @@ const GroupChatModal = ({ children }) => {
                             color="black"
                             _hover={{ bg: "#00c8e0" }}
                             onClick={handleSubmit}
+                            isLoading={picLoading}
                         >
                             Create Group
                         </Button>

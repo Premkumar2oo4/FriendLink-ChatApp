@@ -8,7 +8,7 @@ const { notFound, errorHandler } = require('./middleware/errorhandler')
 const messageRouter = require('./router/messageRouter')
 const PORT = process.env.PORT || 5000
 const app = express()
-
+const path = require("path");
 app.use(cors())
 app.use(express.json())
 
@@ -60,18 +60,35 @@ setInterval(async () => {
 }, 3600000); // Check every hour
 
 
+//----------------Production--------------------------
+
+const __dirname1 = path.resolve();
+
+if (process.env.NODE_ENV === "production") {
+    app.use(express.static(path.join(__dirname1, "/frontend/dist")));
+
+    app.get("*", (req, res) =>
+        res.sendFile(path.resolve(__dirname1, "frontend", "dist", "index.html"))
+    );
+} else {
+    app.get("/", (req, res) => {
+        res.send("API is running successfully");
+    });
+}
+
+//----------------Production--------------------------
+
 app.use(notFound);
 app.use(errorHandler);
 
 const server = app.listen(PORT, () => {
     console.log(`server connected at http://localhost:${PORT}`);
+});
 
-})
 const io = require('socket.io')(server, {
     pingTimeout: 60000,
     cors: {
-        origin: ["http://localhost:5173", "http://localhost:3000"],
-        methods: ["GET", "POST"]
+        origin: "*",
     },
 });
 
@@ -80,12 +97,12 @@ io.on("connection", (socket) => {
     socket.on("setup", (userData) => {
         socket.join(userData._id);
         console.log("User joined room", userData._id);
-        socket.emit("connected")
-    })
+        socket.emit("connected");
+    });
     socket.on("join chat", (room) => {
         socket.join(room);
         console.log("User joined room", room);
-    })
+    });
     socket.on('new message', (newMessageRecieved) => {
         var chat = newMessageRecieved.chat;
 
@@ -96,7 +113,7 @@ io.on("connection", (socket) => {
 
             socket.in(user._id.toString()).emit("message received", newMessageRecieved);
         });
-    })
+    });
 
     socket.on("message read", ({ chatId, userId }) => {
         socket.in(chatId).emit("message read", { chatId, userId });
@@ -125,4 +142,4 @@ io.on("connection", (socket) => {
     socket.on("disconnect", () => {
         console.log("user disconnected");
     });
-})
+});

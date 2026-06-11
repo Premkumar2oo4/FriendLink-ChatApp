@@ -1,6 +1,7 @@
 const asyncHandler=require('express-async-handler')
 const User=require('../models/userModel')
 const Chat=require('../models/chatModel')
+const Message = require('../models/messageModel')
 const addToGroup = asyncHandler(async (req, res) => {
     const { chatId, userId } = req.body;
 
@@ -76,7 +77,12 @@ const createGroupChat = asyncHandler(async (req, res) => {
         return res.status(400).send({ message: "Please Fill all the feilds" });
     }
 
-    var users = JSON.parse(req.body.users);
+    var users;
+    try {
+        users = typeof req.body.users === "string" ? JSON.parse(req.body.users) : req.body.users;
+    } catch (error) {
+        return res.status(400).send({ message: "Invalid users data format" });
+    }
 
     if (users.length < 2) {
         return res
@@ -92,6 +98,7 @@ const createGroupChat = asyncHandler(async (req, res) => {
             users: users,
             isGroupChat: true,
             groupAdmin: req.user,
+            chatPic: req.body.chatPic,
         });
 
         const fullGroupChat = await Chat.findOne({ _id: groupChat._id })
@@ -106,9 +113,42 @@ const createGroupChat = asyncHandler(async (req, res) => {
 });
 
 
+const deleteChat = asyncHandler(async (req, res) => {
+    const { chatId } = req.body;
+
+    const chat = await Chat.findByIdAndUpdate(
+        chatId,
+        {
+            $addToSet: { deletedBy: req.user._id },
+        },
+        {
+            new: true,
+        }
+    );
+
+    if (!chat) {
+        res.status(404);
+        throw new Error("Chat Not Found");
+    }
+
+    // Check if all participants have deleted the chat
+    // For 1-on-1 chats, users.length is 2. For groups, it's >= 2.
+    if (chat.deletedBy.length >= chat.users.length) {
+        // Permanently delete messages and the chat
+        await Message.deleteMany({ chat: chatId });
+        await Chat.findByIdAndDelete(chatId);
+        res.json({ message: "Chat and associated messages permanently deleted from database" });
+    } else {
+        res.json({ message: "Chat hidden for you" });
+    }
+});
+
 const fetchChats = asyncHandler(async (req, res) => {
     try {
-        let results = await Chat.find({ users: { $elemMatch: { $eq: req.user._id } } })
+        let results = await Chat.find({
+            users: { $elemMatch: { $eq: req.user._id } },
+            deletedBy: { $ne: req.user._id }
+        })
             .populate("users", "-password")
             .populate("groupAdmin", "-password")
             .populate("latestMessage")
@@ -149,6 +189,13 @@ const accessChat =asyncHandler(async (req,res)=>{
     });
 
     if (isChat.length > 0) {
+        // If chat exists but was deleted by user, restore it
+        if (isChat[0].deletedBy && isChat[0].deletedBy.includes(req.user._id)) {
+            await Chat.findByIdAndUpdate(isChat[0]._id, {
+                $pull: { deletedBy: req.user._id }
+            });
+            isChat[0].deletedBy = isChat[0].deletedBy.filter(id => id.toString() !== req.user._id.toString());
+        }
         res.send(isChat[0]);
     } else {
         var chatData = {
@@ -171,4 +218,4 @@ const accessChat =asyncHandler(async (req,res)=>{
     }
 })
 
-module.exports = { addToGroup, removeFromGroup, renameGroup, createGroupChat, fetchChats, accessChat }
+module.exports = { deleteChat, addToGroup, removeFromGroup, renameGroup, createGroupChat, fetchChats, accessChat }
